@@ -27,6 +27,10 @@ const BASE_URL =
 ====================================================== */
 app.use(cors());
 app.use(express.json());
+app.get("/ping", (req, res) => {
+  console.log("🏓 Ping reçu");
+  res.send("pong");
+});
 
 /* ======================================================
    STRIPE WEBHOOK (RAW BODY UNIQUEMENT ICI)
