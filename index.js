@@ -6,9 +6,11 @@ const Stripe = require("stripe");
 const cors = require("cors");
 
 const app = express();
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Railway injecte automatiquement le bon port
+/* ======================================================
+   VARIABLES ENVIRONNEMENT
+====================================================== */
+
 const PORT = process.env.PORT || 3000;
 
 const SECRET = process.env.FIVEM_HTTP_SECRET || "CHANGE_ME_SECRET";
@@ -17,28 +19,56 @@ const FIVEM_HTTP_URL =
   process.env.FIVEM_HTTP_URL ||
   "http://127.0.0.1:30120/tiktok_webhook_receiver/tiktok";
 
-// URL publique Railway
 const BASE_URL =
   process.env.BASE_URL ||
-  "http://localhost:" + PORT;
+  `http://localhost:${PORT}`;
+
+/* ======================================================
+   STRIPE SECURISE
+====================================================== */
+
+let stripe = null;
+
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+  console.log("✅ Stripe initialisé");
+} else {
+  console.log("⚠️ STRIPE_SECRET_KEY manquante");
+}
 
 /* ======================================================
    MIDDLEWARES
 ====================================================== */
+
 app.use(cors());
 app.use(express.json());
+
+/* ======================================================
+   ROUTE TEST SERVEUR
+====================================================== */
+
+app.get("/", (req, res) => {
+  res.send("🚀 Server is running");
+});
+
 app.get("/ping", (req, res) => {
   console.log("🏓 Ping reçu");
   res.send("pong");
 });
 
 /* ======================================================
-   STRIPE WEBHOOK (RAW BODY UNIQUEMENT ICI)
+   STRIPE WEBHOOK (RAW BODY OBLIGATOIRE)
 ====================================================== */
+
 app.post(
   "/stripe-webhook",
   express.raw({ type: "application/json" }),
   async (req, res) => {
+
+    if (!stripe) {
+      return res.status(500).send("Stripe non configuré");
+    }
+
     const sig = req.headers["stripe-signature"];
     let event;
 
@@ -58,9 +88,9 @@ app.post(
       const code = session.metadata?.code;
       const type = session.metadata?.type;
 
-      if (code) {
-        console.log("💰 Paiement validé :", code, type);
+      console.log("💰 Paiement validé :", code, type);
 
+      if (code) {
         try {
           await fetch(FIVEM_HTTP_URL, {
             method: "POST",
@@ -89,7 +119,13 @@ app.post(
 /* ======================================================
    CREATION CHECKOUT STRIPE
 ====================================================== */
+
 app.post("/create-checkout-session", async (req, res) => {
+
+  if (!stripe) {
+    return res.status(500).json({ error: "Stripe non configuré" });
+  }
+
   const { code, type } = req.body || {};
 
   if (!code || !type) {
@@ -128,8 +164,9 @@ app.post("/create-checkout-session", async (req, res) => {
 
     console.log("✅ Session Stripe créée :", session.id);
     res.json({ url: session.url });
+
   } catch (err) {
-    console.error("❌ Stripe error :", err);
+    console.error("❌ Stripe error :", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -137,7 +174,9 @@ app.post("/create-checkout-session", async (req, res) => {
 /* ======================================================
    WEBHOOK STREAM TO EARN / TIKTOK
 ====================================================== */
+
 app.post("/webhook", async (req, res) => {
+
   console.log("🔥 Webhook reçu !");
   console.log("Query code:", req.query.code);
   console.log("Body:", req.body);
@@ -169,6 +208,7 @@ app.post("/webhook", async (req, res) => {
 
     console.log("✅ Envoyé à FiveM");
     res.sendStatus(200);
+
   } catch (err) {
     console.error("❌ Erreur TikTok -> FiveM :", err.message);
     res.status(500).send("Erreur HTTP");
@@ -176,8 +216,9 @@ app.post("/webhook", async (req, res) => {
 });
 
 /* ======================================================
-   ROUTES TEST
+   ROUTES STRIPE TEST
 ====================================================== */
+
 app.get("/success", (req, res) => {
   res.send("✅ Paiement réussi !");
 });
@@ -186,16 +227,10 @@ app.get("/cancel", (req, res) => {
   res.send("❌ Paiement annulé.");
 });
 
-app.get("/ping", (req, res) => {
-  res.send("pong");
-});
-
 /* ======================================================
    START SERVER
 ====================================================== */
-app.get("/", (req, res) => {
-  res.send("Server is running");
-});
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log("🚀 Serveur lancé sur port " + PORT);
 });
