@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const fetch = require("node-fetch");
 const Stripe = require("stripe");
+const cors = require("cors");
 
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
@@ -16,14 +17,15 @@ const FIVEM_HTTP_URL =
   process.env.FIVEM_HTTP_URL ||
   "http://127.0.0.1:30120/tiktok_webhook_receiver/tiktok";
 
-// URL publique Railway (à mettre dans Railway Variables)
+// URL publique Railway
 const BASE_URL =
   process.env.BASE_URL ||
   "http://localhost:" + PORT;
 
 /* ======================================================
-   JSON PARSER GLOBAL
+   MIDDLEWARES
 ====================================================== */
+app.use(cors());
 app.use(express.json());
 
 /* ======================================================
@@ -120,6 +122,7 @@ app.post("/create-checkout-session", async (req, res) => {
       cancel_url: `${BASE_URL}/cancel`,
     });
 
+    console.log("✅ Session Stripe créée :", session.id);
     res.json({ url: session.url });
   } catch (err) {
     console.error("❌ Stripe error :", err);
@@ -128,12 +131,17 @@ app.post("/create-checkout-session", async (req, res) => {
 });
 
 /* ======================================================
-   ROUTE TIKTOK
+   WEBHOOK STREAM TO EARN / TIKTOK
 ====================================================== */
 app.post("/webhook", async (req, res) => {
+  console.log("🔥 Webhook reçu !");
+  console.log("Query code:", req.query.code);
+  console.log("Body:", req.body);
+
   const code = req.query.code;
 
   if (!code) {
+    console.log("❌ Code manquant");
     return res.status(400).send("Code manquant");
   }
 
@@ -147,12 +155,15 @@ app.post("/webhook", async (req, res) => {
       duration: req.body.duration,
     };
 
+    console.log("➡ Envoi vers FiveM:", payload);
+
     await fetch(FIVEM_HTTP_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
+    console.log("✅ Envoyé à FiveM");
     res.sendStatus(200);
   } catch (err) {
     console.error("❌ Erreur TikTok -> FiveM :", err.message);
@@ -169,6 +180,10 @@ app.get("/success", (req, res) => {
 
 app.get("/cancel", (req, res) => {
   res.send("❌ Paiement annulé.");
+});
+
+app.get("/ping", (req, res) => {
+  res.send("pong");
 });
 
 /* ======================================================
