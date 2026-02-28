@@ -193,6 +193,9 @@ app.get("/ping", (req, res) => {
 /* ======================================================
    START SERVER
 ====================================================== */
+app.get("/", (req, res) => {
+  res.send("Server is running");
+});
 app.listen(PORT, "0.0.0.0", () => {
   console.log("🚀 Serveur lancé sur port " + PORT);
 });
