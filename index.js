@@ -7,15 +7,22 @@ const Stripe = require("stripe");
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-const PORT = process.env.PORT || 20000;
+// Railway injecte automatiquement le bon port
+const PORT = process.env.PORT || 3000;
+
 const SECRET = process.env.FIVEM_HTTP_SECRET || "CHANGE_ME_SECRET";
 
 const FIVEM_HTTP_URL =
   process.env.FIVEM_HTTP_URL ||
   "http://127.0.0.1:30120/tiktok_webhook_receiver/tiktok";
 
+// URL publique Railway (à mettre dans Railway Variables)
+const BASE_URL =
+  process.env.BASE_URL ||
+  "http://localhost:" + PORT;
+
 /* ======================================================
-   JSON PARSER GLOBAL (IMPORTANT)
+   JSON PARSER GLOBAL
 ====================================================== */
 app.use(express.json());
 
@@ -96,22 +103,9 @@ app.post("/create-checkout-session", async (req, res) => {
     return res.status(400).json({ error: "Invalid type" });
   }
 
-  console.log("=================================");
-  console.log("🔥 Création session Stripe");
-  console.log("Code :", code);
-  console.log("Type :", type);
-  console.log("Price :", priceId);
-  console.log("Mode :", mode);
-  console.log(
-    "Stripe key loaded :",
-    process.env.STRIPE_SECRET_KEY?.substring(0, 15) + "..."
-  );
-  console.log("=================================");
-
   try {
     const session = await stripe.checkout.sessions.create({
       mode: mode,
-      customer_email: "test@test.com",
       line_items: [
         {
           price: priceId,
@@ -122,15 +116,13 @@ app.post("/create-checkout-session", async (req, res) => {
         code: code,
         type: type,
       },
-      success_url: "http://localhost:20000/success",
-      cancel_url: "http://localhost:20000/cancel",
+      success_url: `${BASE_URL}/success`,
+      cancel_url: `${BASE_URL}/cancel`,
     });
-
-    console.log("✅ Session créée :", session.id);
 
     res.json({ url: session.url });
   } catch (err) {
-    console.error("❌ Stripe error COMPLETE :", err);
+    console.error("❌ Stripe error :", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -166,6 +158,17 @@ app.post("/webhook", async (req, res) => {
     console.error("❌ Erreur TikTok -> FiveM :", err.message);
     res.status(500).send("Erreur HTTP");
   }
+});
+
+/* ======================================================
+   ROUTES TEST
+====================================================== */
+app.get("/success", (req, res) => {
+  res.send("✅ Paiement réussi !");
+});
+
+app.get("/cancel", (req, res) => {
+  res.send("❌ Paiement annulé.");
 });
 
 /* ======================================================
