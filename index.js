@@ -17,7 +17,7 @@ const SECRET = process.env.FIVEM_HTTP_SECRET || "CHANGE_ME_SECRET";
 
 const FIVEM_HTTP_URL =
   process.env.FIVEM_HTTP_URL ||
-  "http://127.0.0.1:30120/tiktok_webhook_receiver/tiktok";
+  "http://91.164.130.95:30120/tiktok_webhook_receiver/tiktok";
 
 const BASE_URL =
   process.env.BASE_URL ||
@@ -44,7 +44,7 @@ app.use(cors());
 app.use(express.json());
 
 /* ======================================================
-   ROUTE TEST SERVEUR
+   ROUTES TEST SERVEUR
 ====================================================== */
 
 app.get("/", (req, res) => {
@@ -228,9 +228,11 @@ app.get("/cancel", (req, res) => {
 });
 
 /* ======================================================
-   START SERVER
+   START SERVER (RAILWAY SAFE)
 ====================================================== */
 
-app.listen(PORT, "0.0.0.0", () => {
+console.log("PORT détecté :", process.env.PORT);
+
+app.listen(PORT, () => {
   console.log("🚀 Serveur lancé sur port " + PORT);
 });
