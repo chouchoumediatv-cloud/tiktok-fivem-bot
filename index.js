@@ -8,10 +8,23 @@ const cors = require("cors");
 const app = express();
 
 /* ======================================================
+   SECURITE GLOBALE PROCESS
+====================================================== */
+
+process.on("uncaughtException", (err) => {
+  console.error("🔥 UNCAUGHT EXCEPTION:", err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("🔥 UNHANDLED REJECTION:", err);
+});
+
+/* ======================================================
    VARIABLES ENVIRONNEMENT
 ====================================================== */
 
 const PORT = process.env.PORT || 3000;
+console.log("📡 PORT détecté :", PORT);
 
 const SECRET = process.env.FIVEM_HTTP_SECRET || "CHANGE_ME_SECRET";
 
@@ -44,11 +57,15 @@ app.use(cors());
 app.use(express.json());
 
 /* ======================================================
-   ROUTES TEST SERVEUR
+   ROUTES HEALTHCHECK (IMPORTANT POUR RAILWAY)
 ====================================================== */
 
 app.get("/", (req, res) => {
-  res.send("🚀 Server is running");
+  res.status(200).send("🚀 Server is running");
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).send("ok");
 });
 
 app.get("/ping", (req, res) => {
@@ -79,7 +96,7 @@ app.post(
         process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
-      console.log("❌ Erreur signature Stripe :", err.message);
+      console.error("❌ Erreur signature Stripe :", err.message);
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
@@ -200,13 +217,15 @@ app.post("/webhook", async (req, res) => {
 
     console.log("➡ Envoi vers FiveM:", payload);
 
-    await fetch(FIVEM_HTTP_URL, {
+    const response = await fetch(FIVEM_HTTP_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
+    console.log("📡 Réponse FiveM status:", response.status);
     console.log("✅ Envoyé à FiveM");
+
     res.sendStatus(200);
 
   } catch (err) {
@@ -216,23 +235,9 @@ app.post("/webhook", async (req, res) => {
 });
 
 /* ======================================================
-   ROUTES STRIPE TEST
-====================================================== */
-
-app.get("/success", (req, res) => {
-  res.send("✅ Paiement réussi !");
-});
-
-app.get("/cancel", (req, res) => {
-  res.send("❌ Paiement annulé.");
-});
-
-/* ======================================================
    START SERVER (RAILWAY SAFE)
 ====================================================== */
 
-console.log("PORT détecté :", process.env.PORT);
-
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log("🚀 Serveur lancé sur port " + PORT);
 });
